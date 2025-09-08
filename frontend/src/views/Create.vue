@@ -55,12 +55,30 @@
 
       <!-- 步骤2: 上传音频 -->
       <div v-if="currentStep === 2" class="step-content">
-        <h3 class="step-title">🎤 上传音频样本</h3>
-        
-        <!-- 录音区域 -->
-        <div class="upload-area">
-          <!-- 文件上传 -->
-          <div class="upload-section">
+        <h3 class="step-title">🎤 音频样本</h3>
+
+        <!-- 音频输入方式选择 -->
+        <div class="input-method-tabs">
+          <button
+            @click="inputMethod = 'upload'"
+            class="tab-button"
+            :class="{ active: inputMethod === 'upload' }"
+          >
+            📁 文件上传
+          </button>
+          <button
+            @click="inputMethod = 'record'"
+            class="tab-button"
+            :class="{ active: inputMethod === 'record' }"
+          >
+            🎤 实时录音
+          </button>
+        </div>
+
+        <!-- 音频输入区域 -->
+        <div class="audio-input-area">
+          <!-- 文件上传模式 -->
+          <div v-if="inputMethod === 'upload'" class="upload-section">
             <input
               ref="fileInput"
               type="file"
@@ -68,36 +86,51 @@
               @change="handleFileSelect"
               class="file-input"
             />
-            
-            <div 
+
+            <div
               @click="$refs.fileInput.click()"
               class="upload-zone"
-              :class="{ 'has-file': selectedFile }"
+              :class="{ 'has-file': selectedFile && !recordedAudio }"
             >
-              <div v-if="!selectedFile" class="upload-placeholder">
+              <div v-if="!selectedFile || recordedAudio" class="upload-placeholder">
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">点击选择音频文件</div>
                 <div class="upload-hint">支持 MP3、WAV、M4A 格式</div>
               </div>
-              
+
               <div v-else class="file-info">
                 <div class="file-icon">🎵</div>
                 <div class="file-name">{{ selectedFile.name }}</div>
                 <div class="file-size">{{ formatFileSize(selectedFile.size) }}</div>
+                <button @click.stop="clearSelectedFile" class="clear-file-btn">
+                  ❌ 清除
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- 录音提示 -->
-          <div class="recording-tips">
-            <h4 class="tips-title">📝 录音建议</h4>
-            <ul class="tips-list">
-              <li>录音时长建议 5-15 秒</li>
-              <li>环境安静，声音清晰</li>
-              <li>语速正常，发音标准</li>
-              <li>可以说一段完整的话</li>
-            </ul>
+          <!-- 录音模式 -->
+          <div v-if="inputMethod === 'record'" class="recording-section">
+            <AudioRecorder
+              :max-duration="15"
+              :min-duration="5"
+              @recording-complete="handleRecordingComplete"
+              @recording-start="handleRecordingStart"
+              @recording-stop="handleRecordingStop"
+            />
           </div>
+        </div>
+
+        <!-- 录音提示 -->
+        <div class="recording-tips">
+          <h4 class="tips-title">📝 录音建议</h4>
+          <ul class="tips-list">
+            <li>录音时长建议 5-15 秒</li>
+            <li>环境安静，声音清晰</li>
+            <li>语速正常，发音标准</li>
+            <li>可以说一段完整的话</li>
+            <li v-if="inputMethod === 'record'">首次使用需要允许麦克风权限</li>
+          </ul>
         </div>
 
         <div class="step-actions">
@@ -107,7 +140,7 @@
           <button
             @click="nextStep"
             class="btn btn-primary"
-            :disabled="!selectedFile"
+            :disabled="!hasAudioInput"
           >
             下一步 →
           </button>
@@ -124,12 +157,16 @@
             <span class="summary-value">{{ voiceName }}</span>
           </div>
           <div class="summary-item">
-            <span class="summary-label">音频文件：</span>
-            <span class="summary-value">{{ selectedFile?.name }}</span>
+            <span class="summary-label">音频来源：</span>
+            <span class="summary-value">{{ audioSourceText }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">音频信息：</span>
+            <span class="summary-value">{{ audioInfoText }}</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">文件大小：</span>
-            <span class="summary-value">{{ formatFileSize(selectedFile?.size) }}</span>
+            <span class="summary-value">{{ formatFileSize(currentAudioSize) }}</span>
           </div>
         </div>
 
@@ -196,6 +233,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAppStore } from '../stores/app.js'
+import AudioRecorder from '../components/AudioRecorder.vue'
 
 // 使用store
 const store = useAppStore()
@@ -204,6 +242,8 @@ const store = useAppStore()
 const currentStep = ref(1)
 const voiceName = ref('')
 const selectedFile = ref(null)
+const recordedAudio = ref(null)
+const inputMethod = ref('upload') // 'upload' 或 'record'
 const fileInput = ref(null)
 const isCreating = ref(false)
 const creationResult = ref(null)
@@ -211,6 +251,49 @@ const creationResult = ref(null)
 // 从store解构
 const { error, clearError } = store
 const { uploadVoiceSample } = store
+
+// 计算属性
+const hasAudioInput = computed(() => {
+  return selectedFile.value || recordedAudio.value
+})
+
+const audioSourceText = computed(() => {
+  if (recordedAudio.value) {
+    return '🎤 实时录音'
+  } else if (selectedFile.value) {
+    return '📁 文件上传'
+  }
+  return '无'
+})
+
+const audioInfoText = computed(() => {
+  if (recordedAudio.value) {
+    const duration = Math.round(recordedAudio.value.duration)
+    return `录音时长 ${duration} 秒`
+  } else if (selectedFile.value) {
+    return selectedFile.value.name
+  }
+  return '无'
+})
+
+const currentAudioSize = computed(() => {
+  if (recordedAudio.value) {
+    return recordedAudio.value.blob.size
+  } else if (selectedFile.value) {
+    return selectedFile.value.size
+  }
+  return 0
+})
+
+const currentAudioFile = computed(() => {
+  if (recordedAudio.value) {
+    // 将录音Blob转换为File对象
+    return new File([recordedAudio.value.blob], `recording_${Date.now()}.webm`, {
+      type: recordedAudio.value.blob.type
+    })
+  }
+  return selectedFile.value
+})
 
 // 方法
 const nextStep = () => {
@@ -233,15 +316,42 @@ const handleFileSelect = (event) => {
       alert('请选择音频文件')
       return
     }
-    
+
     // 验证文件大小 (10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('文件过大，请选择小于10MB的音频文件')
       return
     }
-    
+
     selectedFile.value = file
+    // 清除录音数据
+    recordedAudio.value = null
   }
+}
+
+const clearSelectedFile = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const handleRecordingComplete = (audioData) => {
+  console.log('录音完成:', audioData)
+  recordedAudio.value = audioData
+  // 清除文件选择
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const handleRecordingStart = () => {
+  console.log('开始录音')
+}
+
+const handleRecordingStop = () => {
+  console.log('停止录音')
 }
 
 const formatFileSize = (bytes) => {
@@ -255,15 +365,16 @@ const formatFileSize = (bytes) => {
 }
 
 const createVoice = async () => {
-  if (!selectedFile.value || !voiceName.value.trim()) {
+  if (!hasAudioInput.value || !voiceName.value.trim()) {
     return
   }
-  
+
   try {
     isCreating.value = true
-    
-    const result = await uploadVoiceSample(selectedFile.value, voiceName.value.trim())
-    
+
+    const audioFile = currentAudioFile.value
+    const result = await uploadVoiceSample(audioFile, voiceName.value.trim())
+
     if (result) {
       creationResult.value = result
       currentStep.value = 4 // 显示成功状态
@@ -279,10 +390,12 @@ const resetForm = () => {
   currentStep.value = 1
   voiceName.value = ''
   selectedFile.value = null
+  recordedAudio.value = null
+  inputMethod.value = 'upload'
   creationResult.value = null
   isCreating.value = false
   clearError()
-  
+
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -382,7 +495,43 @@ const resetForm = () => {
   margin-top: var(--space-1);
 }
 
-.upload-area {
+.input-method-tabs {
+  display: flex;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--gray-300);
+}
+
+.tab-button {
+  flex: 1;
+  padding: var(--space-3);
+  background: var(--gray-100);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: var(--gray-600);
+}
+
+.tab-button:hover {
+  background: var(--gray-200);
+}
+
+.tab-button.active {
+  background: var(--primary);
+  color: white;
+}
+
+.audio-input-area {
+  margin-bottom: var(--space-4);
+}
+
+.upload-section {
+  margin-bottom: var(--space-4);
+}
+
+.recording-section {
   margin-bottom: var(--space-4);
 }
 
@@ -449,6 +598,22 @@ const resetForm = () => {
 .file-size {
   font-size: 14px;
   opacity: 0.8;
+}
+
+.clear-file-btn {
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-file-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .recording-tips {
