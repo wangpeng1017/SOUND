@@ -5,6 +5,8 @@ uvicorn[standard]==0.24.0
 # Database
 sqlalchemy==2.0.23
 alembic==1.13.0
+prisma==0.11.0
+asyncpg==0.29.0
 
 # File processing
 python-multipart==0.0.6
@@ -34,9 +36,13 @@ pydantic-settings==2.1.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 
+# Cloud Storage
+vercel-blob==0.1.0
+
 # Tools
 loguru==0.7.2
 python-dateutil==2.8.2
+python-slugify==8.0.1
 
 # Development tools
 pytest==7.4.3

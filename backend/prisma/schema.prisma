@@ -1,0 +1,134 @@
+// Prisma schema for 老师喊我去上学 AI语音克隆应用
+
+generator client {
+  provider = "prisma-client-py"
+  interface = "asyncio"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PRISMA_DATABASE_URL")
+}
+
+// 用户模型
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  username  String?  @unique
+  nickname  String?
+  avatar    String?
+  
+  // 微信相关字段
+  wechatOpenId  String? @unique @map("wechat_open_id")
+  wechatUnionId String? @unique @map("wechat_union_id")
+  
+  // 时间戳
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // 关联关系
+  voices    Voice[]
+  tasks     Task[]
+  
+  @@map("users")
+}
+
+// 音色模型
+model Voice {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  
+  // 音频文件信息
+  audioUrl    String      @map("audio_url")
+  audioSize   Int         @map("audio_size")
+  audioDuration Float     @map("audio_duration")
+  audioFormat String      @map("audio_format")
+  
+  // 模型信息
+  modelUrl    String?     @map("model_url")
+  modelSize   Int?        @map("model_size")
+  
+  // 状态和质量
+  status      VoiceStatus @default(PENDING)
+  quality     Float?      // 0-1 质量评分
+  
+  // 用户关联
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 时间戳
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  // 关联关系
+  tasks       Task[]
+  
+  @@map("voices")
+}
+
+// 任务模型
+model Task {
+  id          String     @id @default(cuid())
+  type        TaskType
+  status      TaskStatus @default(PENDING)
+  
+  // 任务参数
+  inputText   String?    @map("input_text")
+  voiceId     String?    @map("voice_id")
+  
+  // 结果信息
+  outputUrl   String?    @map("output_url")
+  outputSize  Int?       @map("output_size")
+  
+  // 进度和错误信息
+  progress    Float      @default(0) // 0-100
+  error       String?
+  
+  // 用户关联
+  userId      String     @map("user_id")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 音色关联（可选）
+  voice       Voice?     @relation(fields: [voiceId], references: [id], onDelete: SetNull)
+  
+  // 时间戳
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  completedAt DateTime?  @map("completed_at")
+  
+  @@map("tasks")
+}
+
+// 系统配置模型
+model Config {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("configs")
+}
+
+// 枚举类型
+enum VoiceStatus {
+  PENDING    // 等待处理
+  TRAINING   // 训练中
+  COMPLETED  // 训练完成
+  FAILED     // 训练失败
+}
+
+enum TaskType {
+  VOICE_TRAINING  // 音色训练
+  TTS_SYNTHESIS   // 语音合成
+}
+
+enum TaskStatus {
+  PENDING    // 等待中
+  RUNNING    // 执行中
+  COMPLETED  // 已完成
+  FAILED     // 失败
+  CANCELLED  // 已取消
+}
