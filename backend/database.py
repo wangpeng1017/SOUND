@@ -23,18 +23,26 @@ _memory_db = {
 
 class MockDatabase:
     """模拟数据库类"""
-    
+
     def __init__(self):
         self.connected = False
-    
+
     async def connect(self):
         """连接数据库"""
         self.connected = True
         return self
-    
+
     async def disconnect(self):
         """断开连接"""
         self.connected = False
+
+    async def __aenter__(self):
+        """异步上下文管理器入口"""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """异步上下文管理器出口"""
+        pass
     
     # 用户相关操作
     class user:

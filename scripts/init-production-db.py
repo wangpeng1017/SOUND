@@ -10,7 +10,7 @@ from datetime import datetime
 
 # 数据库配置
 DATABASE_URL = "prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19wcGdyMVlRaHNjaURMd0NoY3pYMXQiLCJhcGlfa2V5IjoiMDFLNE1NM0c3OVZaMVZIR0ZXUjRCUEZYQ1ciLCJ0ZW5hbnRfaWQiOiI3MGI0NjNmMGI0MzdkZTAzMWZlZDgyZWYxZTYwYTMxYzQ3NjQ1NzRiNWI4NWYyOTcxNTE4NTIwZDQ3ZGI5NTNkIiwiaW50ZXJuYWxfc2VjcmV0IjoiN2VlOGViZDUtOWJmZi00OWRhLWFiZjgtYTk1YjZkNDhjNGQ0In0.KiikocrUoD_b0eIOShgAkr4cCJm7rNcJ4x2DgUNWfbU"
-BACKEND_URL = "https://teacher-call-backend.vercel.app"
+BACKEND_URL = "https://sound.aifly.me"
 
 async def test_database_connection():
     """测试数据库连接"""
