@@ -1,6 +1,16 @@
 // 极简API服务模块
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+// API基础URL配置 - 支持多环境
+const getApiBaseUrl = () => {
+  // 生产环境
+  if (import.meta.env.PROD) {
+    return import.meta.env.VITE_API_BASE_URL || 'https://your-backend-api.herokuapp.com'
+  }
+  // 开发环境
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+}
+
+const API_BASE = getApiBaseUrl()
 
 class ApiService {
   constructor() {
