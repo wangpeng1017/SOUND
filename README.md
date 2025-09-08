@@ -1,30 +1,69 @@
-# 老师喊我去上学 - AI语音克隆应用
+# 🎤 老师喊我去上学 - AI语音克隆应用
 
-## 项目简介
+<div align="center">
 
-"老师喊我去上学"是一款轻量级的移动端PWA应用，核心功能是将用户输入的文字转换成特定人物（如老师、爸爸、妈妈、奶奶）音色的语音。用户可以录制或上传少量音频样本来克隆音色，并保存以便后续使用，实现个性化的语音合成。
+![GitHub stars](https://img.shields.io/github/stars/wangpeng1017/SOUND?style=social)
+![GitHub forks](https://img.shields.io/github/forks/wangpeng1017/SOUND?style=social)
+![GitHub issues](https://img.shields.io/github/issues/wangpeng1017/SOUND)
+![GitHub license](https://img.shields.io/github/license/wangpeng1017/SOUND)
 
-## 技术架构
+**一款极简设计的AI语音克隆PWA应用**
 
-### 前端
-- **框架**: Vue.js 3 + Vite
-- **类型**: Progressive Web App (PWA)
-- **UI库**: 待定（考虑Vuetify或Element Plus）
-- **状态管理**: Pinia
-- **部署**: EdgeOne Pages
+[🚀 在线演示](http://localhost:3000) | [📖 文档](./docs/) | [🐛 报告问题](https://github.com/wangpeng1017/SOUND/issues)
 
-### 后端
-- **框架**: Python FastAPI
-- **AI模型**: MockingBird (声音克隆) + 备选TTS方案
-- **数据库**: SQLite (开发) / PostgreSQL (生产)
-- **文件存储**: 本地存储 + 云存储
-- **部署**: 云服务器 (GPU支持)
+</div>
 
-### 核心功能
-1. **文字转语音 (TTS)**: 将用户输入的文本转换为语音
-2. **声音克隆**: 通过用户上传的音频样本训练个性化音色
-3. **音色管理**: 保存、管理和选择不同的音色
-4. **移动端适配**: 响应式设计，支持PWA功能
+## ✨ 项目简介
+
+"老师喊我去上学"是一款轻量级的移动端PWA应用，专注于AI语音克隆技术。用户只需3步即可将文字转换成特定人物（如老师、爸爸、妈妈）的个性化语音。
+
+### 🎯 核心特性
+
+- 🎤 **智能TTS引擎** - 支持多种语音合成引擎，自动选择最佳方案
+- 🎵 **声音克隆** - 上传5-15秒音频即可训练专属音色
+- 📱 **PWA应用** - 可安装到手机主屏幕，原生应用体验
+- 🎨 **极简设计** - 遵循极简主义，3步完成核心功能
+- ⚡ **实时处理** - 异步任务处理，实时状态反馈
+- 🔊 **高质量音频** - 智能音频处理和质量评估
+
+## 🏗️ 技术架构
+
+### 🎨 前端层 (PWA)
+```
+Vue.js 3 + Composition API
+├── 🎨 极简UI设计 (原生CSS + CSS变量)
+├── 📱 PWA支持 (可安装、离线使用)
+├── 🔄 状态管理 (Pinia)
+├── 🌐 路由管理 (Vue Router)
+└── ⚡ 构建工具 (Vite)
+```
+
+### 🔧 后端层 (API网关)
+```
+Python FastAPI
+├── 🌐 RESTful API设计
+├── 🔄 异步任务处理
+├── 🔗 AI服务代理
+├── 📊 任务状态管理
+└── 💾 数据缓存
+```
+
+### 🤖 AI服务层 (语音处理)
+```
+多引擎TTS + 声音克隆
+├── 🎤 TTS引擎 (Edge-TTS/SAPI/Say/Espeak)
+├── 🔊 音频处理 (验证/预处理/特征提取)
+├── 🧠 声音克隆 (训练框架/模型管理)
+└── 📈 质量评估 (自动评分)
+```
+
+### 🚀 部署架构
+```
+三层微服务架构
+├── 前端: EdgeOne Pages (CDN加速)
+├── 后端: 云服务器 (API网关)
+└── AI服务: GPU服务器 (AI计算)
+```
 
 ## 项目结构
 
@@ -75,57 +114,134 @@
 - [ ] 多语种支持
 - [ ] 社区功能
 
-## 快速开始
+## 🚀 快速开始
 
-### 环境要求
-- Node.js 18+
-- Python 3.8+
-- Git
+### 📋 环境要求
+- **Node.js** 18+
+- **Python** 3.8+
+- **Git** 最新版本
+- **可选**: FFmpeg (音频处理)
 
-### 安装依赖
-
-```bash
-# 前端依赖
-cd frontend
-npm install
-
-# 后端依赖
-cd ../backend
-pip install -r requirements.txt
-
-# AI服务依赖
-cd ../ai-service
-pip install -r requirements.txt
-```
-
-### 开发运行
+### 📦 一键安装
 
 ```bash
-# 启动前端开发服务器
-cd frontend
-npm run dev
+# 1. 克隆项目
+git clone https://github.com/wangpeng1017/SOUND.git
+cd SOUND
 
-# 启动后端API服务
-cd backend
-python main.py
+# 2. 安装前端依赖
+cd frontend && npm install
 
-# 启动AI服务
-cd ai-service
-python main.py
+# 3. 安装后端依赖
+cd ../backend && pip install -r requirements.txt
+
+# 4. 安装AI服务依赖
+cd ../ai-service && pip install -r requirements.txt
 ```
 
-## 贡献指南
+### 🎯 启动服务
 
-1. Fork 项目
+```bash
+# 方式1: 分别启动 (推荐开发)
+# 终端1: 启动AI服务 (端口8001)
+cd ai-service && python main_v2.py
+
+# 终端2: 启动后端API (端口8000)
+cd backend && python main.py
+
+# 终端3: 启动前端应用 (端口3000)
+cd frontend && npm run dev
+
+# 方式2: 快速检查服务状态
+python scripts/check_services.py
+```
+
+### 🌐 访问应用
+
+- **前端应用**: http://localhost:3000
+- **API文档**: http://localhost:8000/docs
+- **AI服务**: http://localhost:8001/docs
+
+## 📱 功能演示
+
+### 🎤 文字转语音 (3步完成)
+1. **输入文字** - 支持中文，最多200字符
+2. **选择音色** - 系统自动检测可用TTS引擎
+3. **生成语音** - 实时进度显示，支持播放下载
+
+### 🎵 声音克隆
+1. **上传音频** - 支持MP3/WAV/M4A格式，5-15秒最佳
+2. **智能处理** - 自动音频验证和质量评估
+3. **模型训练** - 异步训练，实时状态跟踪
+4. **音色管理** - 创建、使用、删除自定义音色
+
+### 📊 支持的TTS引擎
+- ✅ **Edge TTS** - 高质量中文语音 (推荐)
+- ✅ **Windows SAPI** - Windows系统内置
+- ✅ **macOS Say** - macOS系统内置
+- ✅ **Linux Espeak** - 开源轻量级引擎
+
+## 📖 文档
+
+- 📋 [API接口文档](./docs/api/api-specification.md)
+- 🛠️ [开发指南](./docs/development/development-guide.md)
+- 🚀 [部署指南](./docs/deployment/deployment-guide.md)
+- 🎯 [功能演示](./docs/feature-demo-v2.md)
+- 🔧 [技术架构](./docs/development/tech-stack.md)
+
+## 🤝 贡献指南
+
+我们欢迎所有形式的贡献！
+
+### 🐛 报告问题
+- 使用 [Issues](https://github.com/wangpeng1017/SOUND/issues) 报告bug
+- 提供详细的复现步骤和环境信息
+
+### 💡 功能建议
+- 在 [Issues](https://github.com/wangpeng1017/SOUND/issues) 中提出新功能建议
+- 描述功能的使用场景和预期效果
+
+### 🔧 代码贡献
+1. Fork 本项目
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+3. 提交更改 (`git commit -m '✨ Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
+5. 创建 Pull Request
 
-## 许可证
+### 📝 提交规范
+```
+✨ feat: 新功能
+🐛 fix: 修复bug
+📚 docs: 文档更新
+🎨 style: 代码格式
+♻️ refactor: 重构
+⚡ perf: 性能优化
+✅ test: 测试相关
+🔧 chore: 构建/工具
+```
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+## ⭐ Star History
 
-## 联系方式
+如果这个项目对你有帮助，请给我们一个 ⭐ Star！
 
-项目链接: [https://github.com/your-username/teacher-call-me-to-school](https://github.com/your-username/teacher-call-me-to-school)
+[![Star History Chart](https://api.star-history.com/svg?repos=wangpeng1017/SOUND&type=Date)](https://star-history.com/#wangpeng1017/SOUND&Date)
+
+## 📄 许可证
+
+本项目采用 [MIT 许可证](LICENSE) - 查看文件了解详情。
+
+## 📞 联系方式
+
+- 🐛 **问题反馈**: [GitHub Issues](https://github.com/wangpeng1017/SOUND/issues)
+- 💬 **功能讨论**: [GitHub Discussions](https://github.com/wangpeng1017/SOUND/discussions)
+- 📧 **邮件联系**: wangpeng1017@example.com
+
+---
+
+<div align="center">
+
+**[⬆ 回到顶部](#-老师喊我去上学---ai语音克隆应用)**
+
+Made with ❤️ by [wangpeng1017](https://github.com/wangpeng1017)
+
+</div>
