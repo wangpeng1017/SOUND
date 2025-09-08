@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "main_v3.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
@@ -16,6 +19,12 @@
     "BLOB_READ_WRITE_TOKEN": "@blob_read_write_token",
     "PRISMA_DATABASE_URL": "@prisma_database_url",
     "JWT_SECRET_KEY": "@jwt_secret_key",
-    "API_DEBUG": "False"
+    "API_DEBUG": "False",
+    "PYTHONPATH": "."
+  },
+  "functions": {
+    "main_v3.py": {
+      "maxDuration": 30
+    }
   }
 }

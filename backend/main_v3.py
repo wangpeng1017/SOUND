@@ -19,9 +19,17 @@ import json
 import httpx
 
 # 导入自定义模块
-from app.database import connect_database, disconnect_database, get_database
-from app.storage import storage
-from app.models import *
+try:
+    from app.database import connect_database, disconnect_database, get_database
+    from app.storage import storage
+    from app.models import *
+except ImportError:
+    # Vercel部署时的备用导入
+    import sys
+    sys.path.append('.')
+    from database import connect_database, disconnect_database, get_database
+    from storage import storage
+    from models import *
 
 # 应用生命周期管理
 @asynccontextmanager
