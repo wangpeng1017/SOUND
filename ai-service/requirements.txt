@@ -1,0 +1,54 @@
+# MockingBird相关依赖
+torch==2.1.0
+torchaudio==2.1.0
+torchvision==0.16.0
+
+# 音频处理
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+webrtcvad==2.0.10
+
+# 科学计算
+numpy==1.24.3
+scipy==1.11.4
+matplotlib==3.7.2
+
+# 机器学习
+scikit-learn==1.3.2
+tensorboard==2.15.1
+
+# 语音处理专用
+pyworld==0.3.4
+praat-parselmouth==0.4.3
+
+# 文本处理
+jieba==0.42.1
+pypinyin==0.49.0
+
+# Web服务
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# 工具
+tqdm==4.66.1
+loguru==0.7.2
+python-dotenv==1.0.0
+pydantic==2.5.0
+
+# 文件处理
+aiofiles==23.2.1
+python-multipart==0.0.6
+
+# HTTP
+httpx==0.25.2
+requests==2.31.0
+
+# 开发工具
+pytest==7.4.3
+black==23.11.0
+isort==5.12.0
+
+# MockingBird特定依赖 (需要根据实际情况调整)
+# 注意：这些可能需要从源码安装或特定版本
+# git+https://github.com/babysor/MockingBird.git

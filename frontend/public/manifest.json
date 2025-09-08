@@ -1,0 +1,53 @@
+{
+  "name": "老师喊我去上学",
+  "short_name": "语音克隆",
+  "description": "极简AI语音克隆应用，让老师和家长的声音陪伴你",
+  "theme_color": "#4F46E5",
+  "background_color": "#F8FAFC",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "lang": "zh-CN",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "生成语音",
+      "short_name": "TTS",
+      "description": "快速生成语音",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "我的音色",
+      "short_name": "音色",
+      "description": "管理音色",
+      "url": "/voices",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png", 
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

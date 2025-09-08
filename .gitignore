@@ -1,0 +1,115 @@
+# 依赖目录
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 分发/打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 单元测试/覆盖率报告
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# 环境变量
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+
+# 上传文件
+uploads/
+audio/
+models/
+temp/
+
+# AI模型文件
+*.pth
+*.pt
+*.ckpt
+*.model
+*.bin
+
+# 音频文件
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg
+
+# 前端构建产物
+frontend/dist/
+frontend/.nuxt/
+frontend/.output/
+frontend/.vite/
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 配置文件（包含敏感信息）
+config.local.json
+.env.local
+.env.production
+
+# 测试文件
+test_audio/
+test_models/

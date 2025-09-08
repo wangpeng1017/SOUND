@@ -1,0 +1,46 @@
+# Web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.0
+
+# File processing
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# Audio processing
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+
+# AI/ML
+torch==2.1.0
+torchaudio==2.1.0
+numpy==1.24.3
+scipy==1.11.4
+
+# HTTP client
+httpx==0.25.2
+requests==2.31.0
+
+# Configuration management
+python-dotenv==1.0.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Tools
+loguru==0.7.2
+python-dateutil==2.8.2
+
+# Development tools
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
