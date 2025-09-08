@@ -6,10 +6,11 @@ import os
 import aiofiles
 from typing import BinaryIO, Optional
 from fastapi import UploadFile
-from vercel_blob import put, delete, list_blobs
+import httpx
 import uuid
 from datetime import datetime
 import mimetypes
+import json
 
 class BlobStorage:
     """Vercel Blob存储服务类"""
@@ -53,18 +54,25 @@ class BlobStorage:
             # 读取文件内容
             content = await file.read()
             
-            # 上传到Vercel Blob
-            response = await put(
-                pathname=blob_path,
-                body=content,
-                options={
-                    "access": "public",
-                    "token": self.token
-                }
-            )
+            # 上传到Vercel Blob (使用HTTP API)
+            async with httpx.AsyncClient() as client:
+                response = await client.put(
+                    "https://blob.vercel-storage.com",
+                    headers={
+                        "authorization": f"Bearer {self.token}",
+                        "x-content-type": file.content_type or "application/octet-stream"
+                    },
+                    params={"filename": blob_path},
+                    content=content
+                )
+
+                if response.status_code != 200:
+                    raise Exception(f"Upload failed: {response.status_code}")
+
+                result = response.json()
             
             return {
-                "url": response.url,
+                "url": result.get("url", f"https://blob.vercel-storage.com/{blob_path}"),
                 "size": len(content),
                 "filename": filename,
                 "path": blob_path,
