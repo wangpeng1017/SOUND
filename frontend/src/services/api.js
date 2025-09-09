@@ -2,9 +2,9 @@
 
 // API基础URL配置 - 支持多环境
 const getApiBaseUrl = () => {
-  // 生产环境
+  // 生产环境 - 使用空字符串让Vercel代理处理
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_BASE_URL || 'https://your-backend-api.herokuapp.com'
+    return import.meta.env.VITE_API_BASE_URL || ''
   }
   // 开发环境
   return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
