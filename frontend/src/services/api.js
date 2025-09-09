@@ -82,12 +82,14 @@ class ApiService {
   }
 
   // 上传音频样本
-  async uploadVoiceSample(audioFile, voiceName) {
+  async uploadVoiceSample(audioFile, voiceName, userId = 'user_1') {
     const formData = new FormData()
     formData.append('audio_file', audioFile)
-    formData.append('voice_name', voiceName)
-    
-    return this.upload('/api/voice/upload', formData)
+    formData.append('name', voiceName)
+    formData.append('user_id', userId)
+    formData.append('description', `用户上传的音色：${voiceName}`)
+
+    return this.upload('/api/voices', formData)
   }
 
   // 获取音频文件URL

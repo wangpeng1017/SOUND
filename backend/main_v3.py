@@ -38,9 +38,27 @@ async def lifespan(app: FastAPI):
     print("🚀 启动应用...")
     await connect_database()
     print("✅ 数据库连接成功")
-    
+
+    # 创建默认用户
+    try:
+        db = await get_database()
+        existing_user = await db.get_user("user_1")
+        if not existing_user:
+            default_user = {
+                "id": "user_1",
+                "name": "默认用户",
+                "email": "user@example.com",
+                "created_at": "2025-09-08T22:00:00Z"
+            }
+            await db.create_user(default_user)
+            print("✅ 默认用户创建成功")
+        else:
+            print("✅ 默认用户已存在")
+    except Exception as e:
+        print(f"⚠️ 创建默认用户失败: {e}")
+
     yield
-    
+
     # 关闭时
     print("🔄 关闭应用...")
     await disconnect_database()

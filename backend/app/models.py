@@ -62,15 +62,17 @@ class VoiceResponse(BaseModel):
     audio_size: int
     audio_duration: float
     audio_format: str
-    model_url: Optional[str]
-    model_size: Optional[int]
+    voice_model_url: Optional[str]
+    voice_model_size: Optional[int]
     status: VoiceStatus
     quality: Optional[float]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+        # 解决Pydantic保护命名空间冲突
+        protected_namespaces = ()
 
 class VoiceListResponse(BaseModel):
     voices: List[VoiceResponse]

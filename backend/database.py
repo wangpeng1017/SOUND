@@ -126,6 +126,8 @@ class MockDatabase:
                 "audioSize": data.get("audioSize"),
                 "audioDuration": data.get("audioDuration"),
                 "audioFormat": data.get("audioFormat"),
+                "voice_model_url": data.get("voice_model_url"),
+                "voice_model_size": data.get("voice_model_size"),
                 "userId": data.get("userId"),
                 "status": data.get("status", "PENDING"),
                 "quality": data.get("quality"),
