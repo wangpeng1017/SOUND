@@ -203,9 +203,9 @@
         </p>
         
         <div class="success-actions">
-          <router-link to="/voices" class="btn btn-primary">
+          <button @click="goToVoices" class="btn btn-primary">
             查看我的音色
-          </router-link>
+          </button>
           <button @click="resetForm" class="btn btn-secondary">
             再创建一个
           </button>
@@ -232,11 +232,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
 import AudioRecorder from '../components/AudioRecorder.vue'
 
 // 使用store
 const store = useAppStore()
+const router = useRouter()
 
 // 响应式数据
 const currentStep = ref(1)
@@ -418,6 +420,17 @@ const resetForm = () => {
   if (fileInput.value) {
     fileInput.value.value = ''
   }
+}
+
+// 跳转到我的音色并选中新创建的音色
+const goToVoices = () => {
+  try {
+    const vid = creationResult.value?.voice_id
+    if (vid) {
+      localStorage.setItem('selected_voice_id', vid)
+    }
+  } catch (_) {}
+  router.push({ path: '/voices', query: { selected: creationResult.value?.voice_id || '' } })
 }
 </script>
 
