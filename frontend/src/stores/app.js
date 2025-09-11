@@ -57,6 +57,17 @@ export const useAppStore = defineStore('app', () => {
     return Array.from(map.values())
   }
 
+  // 选中音色持久化
+  const SELECTED_VOICE_KEY = 'selected_voice_id'
+  const restoreSelectedVoice = () => {
+    try {
+      const id = localStorage.getItem(SELECTED_VOICE_KEY)
+      if (!id) return
+      const found = voices.value.find(v => v.id === id && v.status === 'ready')
+      if (found) selectedVoice.value = found
+    } catch (_) {}
+  }
+
   // ==================== 计算属性 ====================
   
   // 可用的音色列表
@@ -99,7 +110,10 @@ export const useAppStore = defineStore('app', () => {
       
       voices.value = mergeVoices(serverList, localList)
       
-      // 如果没有选中音色，默认选择第一个
+      // 恢复用户上次选择
+      restoreSelectedVoice()
+      
+      // 如果没有选中音色，默认选择第一个可用
       if (!selectedVoice.value && voices.value.length > 0) {
         selectedVoice.value = voices.value[0]
       }
@@ -107,6 +121,7 @@ export const useAppStore = defineStore('app', () => {
       // 服务器失败也回退到本地
       const localList = readLocalVoices()
       voices.value = mergeVoices([], localList)
+      restoreSelectedVoice()
       if (!selectedVoice.value && voices.value.length > 0) {
         selectedVoice.value = voices.value[0]
       }
@@ -119,6 +134,7 @@ export const useAppStore = defineStore('app', () => {
   // 选择音色
   const selectVoice = (voice) => {
     selectedVoice.value = voice
+    try { localStorage.setItem(SELECTED_VOICE_KEY, voice?.id || '') } catch (_) {}
   }
   
   // 文字转语音
@@ -260,6 +276,14 @@ export const useAppStore = defineStore('app', () => {
   // 初始化应用
   const initApp = async () => {
     await loadVoices()
+    // 再次尝试恢复选择，确保页面间同步
+    try {
+      const id = localStorage.getItem(SELECTED_VOICE_KEY)
+      if (id && (!selectedVoice.value || selectedVoice.value.id !== id)) {
+        const found = voices.value.find(v => v.id === id)
+        if (found) selectedVoice.value = found
+      }
+    } catch (_) {}
   }
 
   // ==================== 返回 ====================
