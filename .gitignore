@@ -113,3 +113,5 @@ config.local.json
 # 测试文件
 test_audio/
 test_models/
+
+.vercel
