@@ -6,6 +6,10 @@ import uuid
 from datetime import datetime
 import json
 import httpx
+import logging
+
+# Silence httpx INFO logs to avoid noisy 404 logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI(title="Voices API", version="0.1.0")
 
@@ -17,64 +21,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 简单内存存储（Serverless 仅用于演示）
-voices_db = {
-    "default": {
-        "id": "default",
-        "name": "默认音色",
+# 系统预设音色（始终可用）
+_system_voices = [
+    {
+        "id": "teacher-female",
+        "name": "女老师",
+        "status": "ready",
+        "type": "system",
+        "created_at": datetime.utcnow().isoformat(),
+    },
+    {
+        "id": "teacher-male",
+        "name": "男老师",
+        "status": "ready",
+        "type": "system",
+        "created_at": datetime.utcnow().isoformat(),
+    },
+    {
+        "id": "mom",
+        "name": "妈妈",
+        "status": "ready",
+        "type": "system",
+        "created_at": datetime.utcnow().isoformat(),
+    },
+    {
+        "id": "dad",
+        "name": "爸爸",
         "status": "ready",
         "type": "system",
         "created_at": datetime.utcnow().isoformat(),
     }
-}
+]
 
+# 简单内存存储（Serverless 仅用于演示）
+voices_db = {v["id"]: v for v in _system_voices}
+
+# 不再使用外部 manifest，返回 None
+aSYNC_READ_MANIFEST_REMOVED = True
 async def _read_manifest() -> Optional[List[dict]]:
-    url = "https://blob.vercel-storage.com/voices/manifest.json"
-    try:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(url, timeout=10.0)
-            if r.status_code == 200:
-                return r.json()
-    except Exception:
-        return None
     return None
 
+# 外部持久化已移除，写入操作不执行
 async def _write_manifest(entries: List[dict]) -> bool:
-    token = os.getenv("BLOB_READ_WRITE_TOKEN")
-    if not token:
-        return False
-    try:
-        async with httpx.AsyncClient() as client:
-            r = await client.put(
-                "https://blob.vercel-storage.com",
-                headers={
-                    "authorization": f"Bearer {token}",
-                    "x-content-type": "application/json",
-                },
-                params={"filename": "voices/manifest.json"},
-                content=json.dumps(entries).encode("utf-8"),
-                timeout=15.0,
-            )
-            return r.status_code == 200
-    except Exception:
-        return False
+    return True
 
 @app.get("/")
 @app.get("/api/voices")
 async def list_voices():
-    # 优先返回持久化的清单
-    manifest = await _read_manifest()
-    if isinstance(manifest, list) and manifest:
-        data = [
-            {"id": it.get("id"), "name": it.get("name"), "status": it.get("status", "ready")}
-            for it in manifest
-            if it.get("id") and it.get("name")
-        ]
-        return {"success": True, "data": data}
-
-    # 回退到内存
+    # 仅返回内存与系统音色，彻底避免外部请求
     data = [
-        {"id": v["id"], "name": v["name"], "status": v["status"]}
+        {"id": v["id"], "name": v["name"], "status": v.get("status", "ready")}
         for v in voices_db.values()
         if v.get("status") in ("ready", "training")
     ]
@@ -129,20 +125,7 @@ async def create_voice(
         "description": description or "",
     }
 
-    # 更新持久化清单
-    try:
-      manifest = await _read_manifest() or []
-      manifest.append({
-          "id": voice_id,
-          "name": name.strip(),
-          "status": "ready",
-          "created_at": datetime.utcnow().isoformat(),
-          "audio_url": blob_url,
-          "user_id": user_id
-      })
-      await _write_manifest(manifest)
-    except Exception:
-      pass
+    # 不再更新外部 manifest，保持内存即可
 
     return {
         "success": True,
