@@ -1,9 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
+from typing import Optional, List
 import os
 import uuid
 from datetime import datetime
+import json
+import httpx
 
 app = FastAPI(title="Voices API", version="0.1.1")
 
@@ -25,9 +27,50 @@ voices_db = {
     }
 }
 
+async def _read_manifest() -> Optional[List[dict]]:
+    url = "https://blob.vercel-storage.com/voices/manifest.json"
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(url, timeout=10.0)
+            if r.status_code == 200:
+                return r.json()
+    except Exception:
+        return None
+    return None
+
+async def _write_manifest(entries: List[dict]) -> bool:
+    token = os.getenv("BLOB_READ_WRITE_TOKEN")
+    if not token:
+        return False
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.put(
+                "https://blob.vercel-storage.com",
+                headers={
+                    "authorization": f"Bearer {token}",
+                    "x-content-type": "application/json",
+                },
+                params={"filename": "voices/manifest.json"},
+                content=json.dumps(entries).encode("utf-8"),
+                timeout=15.0,
+            )
+            return r.status_code == 200
+    except Exception:
+        return False
+
 @app.get("/")
 @app.get("/api/voices")
 async def list_voices():
+    # 优先返回持久化的清单
+    manifest = await _read_manifest()
+    if isinstance(manifest, list) and manifest:
+        data = [
+            {"id": it.get("id"), "name": it.get("name"), "status": it.get("status", "ready")}
+            for it in manifest
+            if it.get("id") and it.get("name")
+        ]
+        return {"success": True, "data": data}
+
     data = [
         {"id": v["id"], "name": v["name"], "status": v["status"]}
         for v in voices_db.values()
@@ -54,7 +97,6 @@ async def create_voice(
     token = os.getenv("BLOB_READ_WRITE_TOKEN")
     if token:
         try:
-            import httpx
             content = await audio_file.read()
             async with httpx.AsyncClient() as client:
                 resp = await client.put(
@@ -75,13 +117,28 @@ async def create_voice(
     voices_db[voice_id] = {
         "id": voice_id,
         "name": name.strip(),
-        "status": "ready",
+        "status": "ready",  # 演示直接可用
         "type": "cloned",
         "created_at": datetime.utcnow().isoformat(),
         "audio_url": blob_url,
         "user_id": user_id,
         "description": description or "",
     }
+
+    # 更新持久化清单
+    try:
+      manifest = await _read_manifest() or []
+      manifest.append({
+          "id": voice_id,
+          "name": name.strip(),
+          "status": "ready",
+          "created_at": datetime.utcnow().isoformat(),
+          "audio_url": blob_url,
+          "user_id": user_id
+      })
+      await _write_manifest(manifest)
+    except Exception:
+      pass
 
     return {
         "success": True,
