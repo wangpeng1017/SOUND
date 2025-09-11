@@ -27,6 +27,7 @@ voices_db = {
 }
 
 @app.get("/")
+@app.get("/api/voices")
 async def list_voices():
     data = [
         {"id": v["id"], "name": v["name"], "status": v["status"]}
@@ -36,6 +37,7 @@ async def list_voices():
     return {"success": True, "data": data}
 
 @app.post("/")
+@app.post("/api/voices")
 async def create_voice(
     audio_file: UploadFile = File(...),
     name: str = Form(...),
