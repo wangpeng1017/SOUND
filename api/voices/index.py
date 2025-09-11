@@ -17,25 +17,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-voices_db = {
-    "default": {
-        "id": "default",
-        "name": "默认音色",
+# 系统预设音色
+system_voices = [
+    {
+        "id": "teacher-female",
+        "name": "女老师",
+        "status": "ready",
+        "type": "system",
+        "created_at": datetime.utcnow().isoformat(),
+    },
+    {
+        "id": "teacher-male",
+        "name": "男老师",
+        "status": "ready",
+        "type": "system",
+        "created_at": datetime.utcnow().isoformat(),
+    },
+    {
+        "id": "mom",
+        "name": "妈妈",
+        "status": "ready",
+        "type": "system",
+        "created_at": datetime.utcnow().isoformat(),
+    },
+    {
+        "id": "dad",
+        "name": "爸爸",
         "status": "ready",
         "type": "system",
         "created_at": datetime.utcnow().isoformat(),
     }
-}
+]
+
+# 内存中的音色数据库
+voices_db = {v["id"]: v for v in system_voices}
 
 async def _read_manifest() -> Optional[List[dict]]:
+    """读取持久化的音色清单，如果不存在则返回None"""
     url = "https://blob.vercel-storage.com/voices/manifest.json"
     try:
         async with httpx.AsyncClient() as client:
+            # 使用HEAD请求先检查文件是否存在
+            head_resp = await client.head(url, timeout=5.0)
+            if head_resp.status_code != 200:
+                return None
+                
+            # 文件存在，获取内容
             r = await client.get(url, timeout=10.0)
             if r.status_code == 200:
                 return r.json()
     except Exception:
-        return None
+        # 静默处理错误，不输出日志
+        pass
     return None
 
 async def _write_manifest(entries: List[dict]) -> bool:
@@ -61,21 +94,20 @@ async def _write_manifest(entries: List[dict]) -> bool:
 @app.get("/")
 @app.get("/api/voices")
 async def list_voices():
-    # 优先返回持久化的清单
+    # 读取持久化清单（如果存在）
     manifest = await _read_manifest()
-    if isinstance(manifest, list) and manifest:
-        data = [
-            {"id": it.get("id"), "name": it.get("name"), "status": it.get("status", "ready")}
-            for it in manifest
-            if it.get("id") and it.get("name")
-        ]
-        return {"success": True, "data": data}
 
-    data = [
-        {"id": v["id"], "name": v["name"], "status": v["status"]}
-        for v in voices_db.values()
-        if v.get("status") in ("ready", "training")
-    ]
+    # 合并系统音色 + 持久化音色 + 内存音色，按id去重
+    merged_map = {v["id"]: {"id": v["id"], "name": v["name"], "status": v.get("status", "ready")} for v in voices_db.values()}
+
+    if isinstance(manifest, list):
+        for it in manifest:
+            vid = it.get("id")
+            name = it.get("name")
+            if vid and name:
+                merged_map[vid] = {"id": vid, "name": name, "status": it.get("status", "ready")}
+
+    data = list(merged_map.values())
     return {"success": True, "data": data}
 
 @app.post("/")

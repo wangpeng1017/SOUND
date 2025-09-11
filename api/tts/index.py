@@ -39,9 +39,21 @@ async def _read_manifest() -> Optional[List[dict]]:
         return None
     return None
 
+# 系统预设音色映射
+SYSTEM_VOICE_MAPPING = {
+    "teacher-female": "zh-CN-XiaoxiaoNeural",  # 女老师
+    "teacher-male": "zh-CN-YunxiNeural",        # 男老师
+    "mom": "zh-CN-XiaohanNeural",               # 妈妈
+    "dad": "zh-CN-YunjianNeural",               # 爸爸
+    "default": "zh-CN-XiaoxiaoNeural"           # 默认
+}
+
 async def _get_reference_audio_url(voice_id: str) -> Optional[str]:
-    if voice_id == "default":
+    # 系统音色不需要参考音频
+    if voice_id in SYSTEM_VOICE_MAPPING:
         return None
+        
+    # 从 manifest 获取用户自定义音色的参考音频
     manifest = await _read_manifest()
     if isinstance(manifest, list):
         for it in manifest:

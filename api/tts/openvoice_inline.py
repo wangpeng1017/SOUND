@@ -8,6 +8,15 @@ from typing import Optional, Dict, Any
 OPENVOICE_SPACES = ["https://myshell-openvoice-openvoice-v2.hf.space"]
 EDGE_TTS_ENABLED = True
 
+# 系统预设音色映射到Edge TTS声音
+SYSTEM_VOICE_MAPPING = {
+    "teacher-female": "zh-CN-XiaoxiaoNeural",  # 女老师
+    "teacher-male": "zh-CN-YunxiNeural",        # 男老师  
+    "mom": "zh-CN-XiaohanNeural",               # 妈妈
+    "dad": "zh-CN-YunjianNeural",               # 爸爸
+    "default": "zh-CN-XiaoxiaoNeural"           # 默认
+}
+
 async def text_to_speech_inline(
     text: str,
     voice_id: str = "default", 
@@ -88,11 +97,12 @@ async def text_to_speech_inline(
         except Exception as e:
             print(f"OpenVoice处理错误: {e}")
     
-    # 尝试Edge TTS
+    # 尝试Edge TTS（系统音色或回退方案）
     if EDGE_TTS_ENABLED:
         try:
             import edge_tts
-            voice = "zh-CN-XiaoxiaoNeural"
+            # 检查是否是系统音色
+            voice = SYSTEM_VOICE_MAPPING.get(voice_id, "zh-CN-XiaoxiaoNeural")
             communicate = edge_tts.Communicate(text, voice)
             tmp = f"/tmp/edge_{uuid.uuid4().hex}.mp3"
             await communicate.save(tmp)
