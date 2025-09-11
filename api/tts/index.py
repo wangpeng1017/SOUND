@@ -7,12 +7,8 @@ import httpx
 import os
 from typing import Optional, List
 
-# 引入 OpenVoice TTS 服务
-try:
-    from api.services.openvoice_tts import service as openvoice_service
-except Exception:
-    # Vercel函数相对导入兼容
-    from services.openvoice_tts import service as openvoice_service
+# 引入内联OpenVoice实现（避免导入问题）
+from .openvoice_inline import text_to_speech_inline
 
 app = FastAPI(title="TTS API", version="0.2.0 (openvoice)")
 
@@ -79,8 +75,8 @@ async def create_tts(req: TTSRequest):
     # 查找参考音频
     reference_audio_url = await _get_reference_audio_url(voice_id)
 
-    # 调用OpenVoice（或回退）同步生成（为简化前端逻辑）
-    result = await openvoice_service.text_to_speech(text, voice_id=voice_id, reference_audio_url=reference_audio_url)
+    # 调用内联OpenVoice实现
+    result = await text_to_speech_inline(text, voice_id=voice_id, reference_audio_url=reference_audio_url)
 
     # 更新任务状态
     if result and result.get("success"):
