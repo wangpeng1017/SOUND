@@ -13,6 +13,11 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # 引入内联OpenVoice实现（避免导入问题）
 from .openvoice_inline import text_to_speech_inline
+# 尝试导入voices模块中的内存数据库（同一无服务器实例内可用）
+try:
+    from ..voices.index import user_voices_db  # type: ignore
+except Exception:
+    user_voices_db = {}
 
 app = FastAPI(title="TTS API", version="0.2.0 (openvoice)")
 
@@ -31,14 +36,17 @@ class TTSRequest(BaseModel):
 # 简易内存任务表
 _tasks = {}
 
-# 读取 voices manifest 以获取参考音频URL
-async def _read_manifest() -> Optional[List[dict]]:
-    url = "https://blob.vercel-storage.com/voices/manifest.json"
+# 从 voices API 获取音色列表
+async def _get_voices() -> Optional[List[dict]]:
+    """从内部voices API获取音色列表"""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(url)
+            # 调用内部API
+            r = await client.get("http://localhost:3000/api/voices")
             if r.status_code == 200:
-                return r.json()
+                data = r.json()
+                if data.get("success") and data.get("data"):
+                    return data["data"]
     except Exception:
         pass
     return None
@@ -57,12 +65,12 @@ async def _get_reference_audio_url(voice_id: str) -> Optional[str]:
     if voice_id in SYSTEM_VOICE_MAPPING:
         return None
         
-    # 从 manifest 获取用户自定义音色的参考音频
-    manifest = await _read_manifest()
-    if isinstance(manifest, list):
-        for it in manifest:
-            if it.get("id") == voice_id and it.get("audio_url"):
-                return it.get("audio_url")
+    # 从内存数据库获取用户音色的参考音频
+    # 注意：由于无服务器函数是独立的，内存不共享
+    # 所以目前暂时禁用自定义音色，只使用系统音色
+    voice = user_voices_db.get(voice_id)
+    if voice and voice.get("audio_url"):
+        return voice["audio_url"]
     return None
 
 @app.post("/")

@@ -56,37 +56,39 @@ system_voices = [
 # 内存中的音色数据库
 voices_db = {v["id"]: v for v in system_voices}
 
+# 使用内存存储用户音色，避免外部请求
+# 这个字典会在创建新音色时更新
+user_voices_db = {}
+
+# 导出供TTS API使用
+__all__ = ['user_voices_db']
+
 async def _read_manifest() -> Optional[List[dict]]:
-    """读取持久化的音色清单，如果不存在则返回None"""
-    url = "https://blob.vercel-storage.com/voices/manifest.json"
-    try:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(url, timeout=5.0)
-            if r.status_code == 200:
-                return r.json()
-    except Exception:
-        pass
-    return None
+    """返回用户创建的音色列表"""
+    return list(user_voices_db.values()) if user_voices_db else None
 
 async def _write_manifest(entries: List[dict]) -> bool:
+    """更新内存中的用户音色列表"""
+    global user_voices_db
+    user_voices_db = {entry["id"]: entry for entry in entries if entry.get("id")}
+    return True
+
+@app.post("/init")
+@app.post("/api/voices/init")
+async def init_manifest():
+    """初始化manifest文件，创建空的manifest.json"""
     token = os.getenv("BLOB_READ_WRITE_TOKEN")
     if not token:
-        return False
-    try:
-        async with httpx.AsyncClient() as client:
-            r = await client.put(
-                "https://blob.vercel-storage.com",
-                headers={
-                    "authorization": f"Bearer {token}",
-                    "x-content-type": "application/json",
-                },
-                params={"filename": "voices/manifest.json"},
-                content=json.dumps(entries).encode("utf-8"),
-                timeout=15.0,
-            )
-            return r.status_code == 200
-    except Exception:
-        return False
+        return {"success": False, "error": "No blob token"}
+        
+    # 检查manifest是否已存在
+    existing = await _read_manifest()
+    if existing is not None:
+        return {"success": True, "message": "Manifest already exists", "count": len(existing)}
+        
+    # 创建空的manifest
+    success = await _write_manifest([])
+    return {"success": success, "message": "Manifest initialized" if success else "Failed to initialize"}
 
 @app.get("/")
 @app.get("/api/voices")
@@ -143,7 +145,8 @@ async def create_voice(
         except Exception:
             blob_url = None
 
-    voices_db[voice_id] = {
+    # 同时存储到两个地方
+    voice_data = {
         "id": voice_id,
         "name": name.strip(),
         "status": "ready",  # 演示直接可用
@@ -153,21 +156,11 @@ async def create_voice(
         "user_id": user_id,
         "description": description or "",
     }
+    
+    voices_db[voice_id] = voice_data
+    user_voices_db[voice_id] = voice_data
 
-    # 更新持久化清单
-    try:
-      manifest = await _read_manifest() or []
-      manifest.append({
-          "id": voice_id,
-          "name": name.strip(),
-          "status": "ready",
-          "created_at": datetime.utcnow().isoformat(),
-          "audio_url": blob_url,
-          "user_id": user_id
-      })
-      await _write_manifest(manifest)
-    except Exception:
-      pass
+    # 不再需要更新manifest，因为已经存储在内存中
 
     return {
         "success": True,
