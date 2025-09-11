@@ -1,18 +1,6 @@
 <template>
   <div class="container">
-    <!-- 错误提示 -->
-    <div v-if="error" class="error-banner">
-      <span>{{ error }}</span>
-      <button @click="clearError" class="error-close">×</button>
-    </div>
-
-    <!-- 加载骨架 -->
-    <div v-if="voicesLoading" class="loading-card">
-      <div class="loading-spinner"></div>
-      <span>正在加载数据...</span>
-    </div>
-
-    <!-- 主要功能卡片（始终渲染，避免空白） -->
+    <!-- 主功能卡片 -->
     <div class="card">
       <h2 class="card-title">✨ 输入文字，生成语音</h2>
       
@@ -23,7 +11,6 @@
           v-model="inputText"
           class="input textarea"
           placeholder="输入你想让老师/妈妈说的话..."
-          :disabled="isGenerating"
           maxlength="200"
         ></textarea>
         <div class="text-counter">{{ inputText.length }}/200</div>
@@ -32,21 +19,21 @@
       <!-- 音色选择 -->
       <div class="input-group">
         <label class="label">选择音色</label>
-        <div class="voice-selector">
+        <div v-if="loading" class="loading-text">加载中...</div>
+        <div v-else-if="voices.length === 0" class="no-voices">
+          <span>暂无可用音色</span>
+          <router-link to="/create" class="link">去创建 →</router-link>
+        </div>
+        <div v-else class="voice-selector">
           <button
-            v-for="voice in combinedVoices"
+            v-for="voice in voices"
             :key="voice.id"
-            @click="selectVoice(voice)"
+            @click="selectedVoiceId = voice.id"
             class="voice-btn"
-            :class="{ active: selectedVoice?.id === voice.id }"
-            :disabled="isGenerating"
+            :class="{ active: selectedVoiceId === voice.id }"
           >
             {{ voice.name }}
           </button>
-        </div>
-        <div v-if="combinedVoices.length === 0" class="no-voices">
-          <span class="text-gray-500">暂无可用音色</span>
-          <router-link to="/create" class="link">去创建 →</router-link>
         </div>
       </div>
 
@@ -54,54 +41,17 @@
       <button
         @click="handleGenerate"
         class="btn btn-primary generate-btn"
-        :disabled="!canGenerate"
+        :disabled="!canGenerate || generating"
       >
-        <span v-if="!isGenerating">🎤 生成语音</span>
-        <span v-else class="flex items-center gap-2">
-          <div class="loading-spinner"></div>
-          生成中... {{ currentTask?.progress || 0 }}%
-        </span>
+        <span v-if="!generating">🎤 生成语音</span>
+        <span v-else>生成中...</span>
       </button>
     </div>
 
     <!-- 结果展示 -->
-    <div v-if="currentTask" class="card result-card">
+    <div v-if="audioUrl" class="card result-card">
       <h3 class="result-title">🎵 生成结果</h3>
-      
-      <div class="result-info">
-        <div class="result-text">"{{ currentTask.text }}"</div>
-        <div class="result-voice">音色：{{ currentTask.voice?.name }}</div>
-      </div>
-
-      <!-- 音频播放器 -->
-      <div v-if="isTaskCompleted && currentTask.audio_url" class="audio-player">
-        <audio 
-          ref="audioPlayer"
-          :src="getAudioUrl(currentTask.audio_url)"
-          controls
-          class="audio-controls"
-        ></audio>
-        
-        <div class="audio-actions">
-          <button @click="playAudio" class="btn btn-secondary">
-            🔊 播放
-          </button>
-          <button @click="downloadAudio" class="btn btn-secondary">
-            📥 下载
-          </button>
-        </div>
-      </div>
-
-      <!-- 处理状态 -->
-      <div v-else-if="isGenerating" class="processing-status">
-        <div class="progress-bar">
-          <div 
-            class="progress-fill" 
-            :style="{ width: (currentTask?.progress || 0) + '%' }"
-          ></div>
-        </div>
-        <div class="status-text">正在生成语音，请稍候...</div>
-      </div>
+      <audio :src="audioUrl" controls class="audio-controls"></audio>
     </div>
 
     <!-- 快捷短语 -->
@@ -113,7 +63,6 @@
           :key="phrase"
           @click="inputText = phrase"
           class="phrase-btn"
-          :disabled="isGenerating"
         >
           {{ phrase }}
         </button>
@@ -124,15 +73,19 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useAppStore } from '../stores/app.js'
-import apiService from '../services/api.js'
 
-// 使用store
-const store = useAppStore()
-
-// 响应式数据
+// 最简单的响应式数据
 const inputText = ref('')
-const audioPlayer = ref(null)
+const selectedVoiceId = ref('')
+const loading = ref(false)
+const generating = ref(false)
+const audioUrl = ref('')
+const voices = ref([])
+
+// 是否可以生成
+const canGenerate = computed(() => {
+  return inputText.value.trim() && selectedVoiceId.value
+})
 
 // 快捷短语
 const quickPhrases = [
@@ -144,100 +97,60 @@ const quickPhrases = [
   '注意安全'
 ]
 
-// 计算属性
-const canGenerate = computed(() => {
-  return inputText.value.trim() && 
-         store.selectedVoice && 
-         !store.isGenerating
-})
-
-// 从store解构需要的状态和方法
-const {
-  availableVoices,
-  voicesLoading,
-  selectedVoice,
-  currentTask,
-  isGenerating,
-  error,
-  isTaskCompleted
-} = store
-
-const {
-  clearError,
-  selectVoice,
-  generateSpeech
-} = store
-
-// 组合音色（store + 后备直连 API），避免后端瞬时内存导致的列表为空
-const fallbackVoices = ref([])
-const combinedVoices = computed(() => {
-  const map = new Map()
-  ;[...availableVoices.value, ...fallbackVoices.value].forEach(v => {
-    if (v && v.id && !map.has(v.id) && (v.status === 'ready')) {
-      map.set(v.id, { id: v.id, name: v.name, status: v.status })
-    }
-  })
-  return Array.from(map.values())
-})
-
-// 方法
-const handleGenerate = async () => {
-  if (!canGenerate.value) return
-  
-  await generateSpeech(inputText.value)
-}
-
-const getAudioUrl = (audioUrl) => {
-  if (audioUrl.startsWith('http')) {
-    return audioUrl
-  }
-  return apiService.getAudioUrl(audioUrl.replace('/api/audio/', ''))
-}
-
-const playAudio = () => {
-  if (audioPlayer.value) {
-    audioPlayer.value.play()
-  }
-}
-
-const downloadAudio = () => {
-  if (currentTask.value?.audio_url) {
-    const link = document.createElement('a')
-    link.href = getAudioUrl(currentTask.value.audio_url)
-    link.download = `语音_${Date.now()}.mp3`
-    link.click()
-  }
-}
-
-// 生命周期
-onMounted(async () => {
-  // 全局错误捕获（仅用于快速排查线上白屏）
-  try {
-    window.addEventListener('error', (e) => {
-      console.error('全局错误:', e?.error || e?.message || e)
-    })
-    window.addEventListener('unhandledrejection', (e) => {
-      console.error('未处理的Promise拒绝:', e?.reason || e)
-    })
-  } catch (_) {}
-
-  // 初始化应用
-  store.initApp()
-
-  // 后备直连获取音色清单
+// 加载音色列表
+const loadVoices = async () => {
+  loading.value = true
   try {
     const res = await fetch('/api/voices')
     const data = await res.json()
-    if (data?.success && Array.isArray(data.data)) {
-      fallbackVoices.value = data.data
-      // 若当前未选择音色，默认选择第一个
-      if (!selectedVoice.value && fallbackVoices.value.length > 0) {
-        selectVoice(fallbackVoices.value[0])
+    if (data?.data) {
+      voices.value = data.data.filter(v => v.status === 'ready')
+      // 默认选中第一个
+      if (voices.value.length > 0 && !selectedVoiceId.value) {
+        selectedVoiceId.value = voices.value[0].id
       }
     }
   } catch (e) {
-    console.error('直连 /api/voices 失败:', e)
+    console.error('加载音色失败:', e)
+  } finally {
+    loading.value = false
   }
+}
+
+// 生成语音
+const handleGenerate = async () => {
+  if (!canGenerate.value || generating.value) return
+  
+  generating.value = true
+  audioUrl.value = ''
+  
+  try {
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: inputText.value,
+        voice_id: selectedVoiceId.value
+      })
+    })
+    
+    const data = await response.json()
+    if (data.audio_url) {
+      audioUrl.value = data.audio_url
+    } else {
+      throw new Error(data.error || '生成失败')
+    }
+  } catch (e) {
+    console.error('生成语音失败:', e)
+    alert('生成语音失败，请重试')
+  } finally {
+    generating.value = false
+  }
+}
+
+// 页面加载时获取音色列表
+onMounted(() => {
+  loadVoices()
 })
 </script>
 
@@ -431,6 +344,14 @@ onMounted(async () => {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.loading-text {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--gray-600);
+  font-size: 14px;
+}
+
 .loading-card {
   display: flex;
   align-items: center;
