@@ -6,7 +6,13 @@
       <button @click="clearError" class="error-close">×</button>
     </div>
 
-    <!-- 主要功能卡片 -->
+    <!-- 加载骨架 -->
+    <div v-if="voicesLoading" class="loading-card">
+      <div class="loading-spinner"></div>
+      <span>正在加载数据...</span>
+    </div>
+
+    <!-- 主要功能卡片（始终渲染，避免空白） -->
     <div class="card">
       <h2 class="card-title">✨ 输入文字，生成语音</h2>
       
@@ -151,6 +157,7 @@ const canGenerate = computed(() => {
 // 从store解构需要的状态和方法
 const {
   availableVoices,
+  voicesLoading,
   selectedVoice,
   currentTask,
   isGenerating,
@@ -229,7 +236,19 @@ const downloadAudio = () => {
 
 // 生命周期
 onMounted(async () => {
+  // 全局错误捕获（仅用于快速排查线上白屏）
+  try {
+    window.addEventListener('error', (e) => {
+      console.error('全局错误:', e?.error || e?.message || e)
+    })
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('未处理的Promise拒绝:', e?.reason || e)
+    })
+  } catch (_) {}
+
+  // 初始化应用
   store.initApp()
+
   // 后备直连获取音色清单
   try {
     const res = await fetch('/api/voices')
@@ -241,7 +260,9 @@ onMounted(async () => {
         selectVoice(fallbackVoices.value[0])
       }
     }
-  } catch (_) {}
+  } catch (e) {
+    console.error('直连 /api/voices 失败:', e)
+  }
 })
 </script>
 
@@ -434,5 +455,16 @@ onMounted(async () => {
 .phrase-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.loading-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
 }
 </style>
