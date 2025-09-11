@@ -6,6 +6,10 @@ import uuid
 import httpx
 import os
 from typing import Optional, List
+import logging
+
+# 禁用httpx的INFO日志
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # 引入内联OpenVoice实现（避免导入问题）
 from .openvoice_inline import text_to_speech_inline
@@ -31,12 +35,12 @@ _tasks = {}
 async def _read_manifest() -> Optional[List[dict]]:
     url = "https://blob.vercel-storage.com/voices/manifest.json"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.get(url)
             if r.status_code == 200:
                 return r.json()
     except Exception:
-        return None
+        pass
     return None
 
 # 系统预设音色映射

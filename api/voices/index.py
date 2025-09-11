@@ -6,6 +6,10 @@ import uuid
 from datetime import datetime
 import json
 import httpx
+import logging
+
+# 禁用httpx的INFO日志，避免404错误输出
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI(title="Voices API", version="0.1.1")
 
@@ -57,17 +61,10 @@ async def _read_manifest() -> Optional[List[dict]]:
     url = "https://blob.vercel-storage.com/voices/manifest.json"
     try:
         async with httpx.AsyncClient() as client:
-            # 使用HEAD请求先检查文件是否存在
-            head_resp = await client.head(url, timeout=5.0)
-            if head_resp.status_code != 200:
-                return None
-                
-            # 文件存在，获取内容
-            r = await client.get(url, timeout=10.0)
+            r = await client.get(url, timeout=5.0)
             if r.status_code == 200:
                 return r.json()
     except Exception:
-        # 静默处理错误，不输出日志
         pass
     return None
 
