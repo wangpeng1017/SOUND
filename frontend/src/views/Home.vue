@@ -120,6 +120,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '../stores/app.js'
 import apiService from '../services/api.js'
+import browserTTS from '../services/browserTTS.js'
 
 // 使用store
 const store = useAppStore()
@@ -127,6 +128,8 @@ const store = useAppStore()
 // 响应式数据
 const inputText = ref('')
 const audioPlayer = ref(null)
+const useBrowserTTS = ref(true) // 默认使用浏览器TTS
+const isPlaying = ref(false)
 
 // 快捷短语
 const quickPhrases = [
@@ -177,7 +180,29 @@ const combinedVoices = computed(() => {
 const handleGenerate = async () => {
   if (!canGenerate.value) return
   
-  await generateSpeech(inputText.value)
+  // 如果启用浏览器TTS，直接在前端合成
+  if (useBrowserTTS.value && browserTTS.isSupported) {
+    try {
+      clearError()
+      isPlaying.value = true
+      
+      // 使用选中的音色ID（如果是浏览器音色）
+      const voiceId = selectedVoice.value?.id
+      
+      // 调用浏览器TTS
+      await browserTTS.textToSpeech(inputText.value, voiceId)
+      
+      isPlaying.value = false
+    } catch (error) {
+      console.error('浏览器TTS失败:', error)
+      isPlaying.value = false
+      // 回退到服务器TTS
+      await generateSpeech(inputText.value)
+    }
+  } else {
+    // 使用服务器端TTS
+    await generateSpeech(inputText.value)
+  }
 }
 
 const getAudioUrl = (audioUrl) => {

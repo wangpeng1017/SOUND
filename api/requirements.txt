@@ -1,3 +1,4 @@
 fastapi==0.104.1
 python-multipart==0.0.6
 httpx==0.25.2
+edge-tts==6.1.10  # 可选备用TTS方案

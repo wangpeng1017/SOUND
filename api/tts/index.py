@@ -3,8 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 import uuid
+import httpx
+import os
+from typing import Optional, List
 
-app = FastAPI(title="TTS API", version="0.1.0")
+# 引入 OpenVoice TTS 服务
+try:
+    from api.services.openvoice_tts import service as openvoice_service
+except Exception:
+    # Vercel函数相对导入兼容
+    from services.openvoice_tts import service as openvoice_service
+
+app = FastAPI(title="TTS API", version="0.2.0 (openvoice)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,6 +31,28 @@ class TTSRequest(BaseModel):
 # 简易内存任务表
 _tasks = {}
 
+# 读取 voices manifest 以获取参考音频URL
+async def _read_manifest() -> Optional[List[dict]]:
+    url = "https://blob.vercel-storage.com/voices/manifest.json"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(url)
+            if r.status_code == 200:
+                return r.json()
+    except Exception:
+        return None
+    return None
+
+async def _get_reference_audio_url(voice_id: str) -> Optional[str]:
+    if voice_id == "default":
+        return None
+    manifest = await _read_manifest()
+    if isinstance(manifest, list):
+        for it in manifest:
+            if it.get("id") == voice_id and it.get("audio_url"):
+                return it.get("audio_url")
+    return None
+
 @app.post("/")
 @app.post("/api/tts")
 async def create_tts(req: TTSRequest):
@@ -31,17 +63,44 @@ async def create_tts(req: TTSRequest):
         raise HTTPException(status_code=400, detail="文本长度不能超过500字符")
 
     task_id = uuid.uuid4().hex
-    # 直接完成（演示用），音频由 /api/audio 提供固定文件
+    voice_id = req.voice_id or "default"
+
+    # 先记录任务为processing
     _tasks[task_id] = {
         "task_id": task_id,
-        "status": "completed",
-        "progress": 100,
-        "audio_url": "/api/audio/dummy.wav",
+        "status": "processing",
+        "progress": 0,
+        "audio_url": None,
         "text": text,
-        "voice_id": req.voice_id or "default",
-        "created_at": datetime.utcnow().isoformat()
+        "voice_id": voice_id,
+        "created_at": datetime.utcnow().isoformat(),
     }
-    return {"success": True, "data": {"task_id": task_id, "status": "processing"}}
+
+    # 查找参考音频
+    reference_audio_url = await _get_reference_audio_url(voice_id)
+
+    # 调用OpenVoice（或回退）同步生成（为简化前端逻辑）
+    result = await openvoice_service.text_to_speech(text, voice_id=voice_id, reference_audio_url=reference_audio_url)
+
+    # 更新任务状态
+    if result and result.get("success"):
+        _tasks[task_id].update({
+            "status": "completed",
+            "progress": 100,
+            "audio_url": result.get("audio_url"),
+            "method": result.get("method", "openvoice"),
+            "completed_at": datetime.utcnow().isoformat(),
+        })
+    else:
+        _tasks[task_id].update({
+            "status": "failed",
+            "progress": 100,
+            "error": "TTS生成失败",
+            "completed_at": datetime.utcnow().isoformat(),
+        })
+
+    # 返回任务ID，前端继续轮询获取完成状态
+    return {"success": True, "data": {"task_id": task_id, "status": _tasks[task_id]["status"]}}
 
 @app.get("/status/{task_id}")
 @app.get("/api/tts/status/{task_id}")
