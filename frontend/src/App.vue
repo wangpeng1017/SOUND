@@ -9,11 +9,7 @@
 
     <!-- 主要内容 -->
     <main class="main">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <router-view />
     </main>
 
     <!-- 底部导航 -->
