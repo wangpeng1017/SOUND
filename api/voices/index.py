@@ -93,21 +93,25 @@ async def init_manifest():
 @app.get("/")
 @app.get("/api/voices")
 async def list_voices():
-    # 读取持久化清单（如果存在）
-    manifest = await _read_manifest()
+    try:
+        # 读取持久化清单（如果存在）
+        manifest = await _read_manifest()
 
-    # 合并系统音色 + 持久化音色 + 内存音色，按id去重
-    merged_map = {v["id"]: {"id": v["id"], "name": v["name"], "status": v.get("status", "ready")} for v in voices_db.values()}
+        # 合并系统音色 + 持久化音色 + 内存音色，按id去重
+        merged_map = {v["id"]: {"id": v["id"], "name": v["name"], "status": v.get("status", "ready")} for v in voices_db.values()}
 
-    if isinstance(manifest, list):
-        for it in manifest:
-            vid = it.get("id")
-            name = it.get("name")
-            if vid and name:
-                merged_map[vid] = {"id": vid, "name": name, "status": it.get("status", "ready")}
+        if isinstance(manifest, list):
+            for it in manifest:
+                vid = it.get("id")
+                name = it.get("name")
+                if vid and name:
+                    merged_map[vid] = {"id": vid, "name": name, "status": it.get("status", "ready")}
 
-    data = list(merged_map.values())
-    return {"success": True, "data": data}
+        data = list(merged_map.values())
+        return {"success": True, "data": data}
+    except Exception as e:
+        # 返回可诊断信息，避免500
+        return {"success": False, "error": f"list_voices_error: {str(e)}"}
 
 @app.post("/")
 async def create_voice(
@@ -116,60 +120,65 @@ async def create_voice(
     user_id: str = Form(...),
     description: Optional[str] = Form(None),
 ):
-    if not audio_file.content_type or not audio_file.content_type.startswith("audio/"):
-        raise HTTPException(status_code=400, detail="请上传音频文件")
-    if len(name.strip()) == 0 or len(name) > 20:
-        raise HTTPException(status_code=400, detail="音色名称长度应在1-20字符之间")
+    try:
+        if not audio_file.content_type or not audio_file.content_type.startswith("audio/"):
+            raise HTTPException(status_code=400, detail="请上传音频文件")
+        if len(name.strip()) == 0 or len(name) > 20:
+            raise HTTPException(status_code=400, detail="音色名称长度应在1-20字符之间")
 
-    voice_id = uuid.uuid4().hex
-    task_id = uuid.uuid4().hex
+        voice_id = uuid.uuid4().hex
+        task_id = uuid.uuid4().hex
 
-    blob_url = None
-    token = os.getenv("BLOB_READ_WRITE_TOKEN")
-    if token:
-        try:
-            content = await audio_file.read()
-            async with httpx.AsyncClient() as client:
-                resp = await client.put(
-                    "https://blob.vercel-storage.com",
-                    headers={
-                        "authorization": f"Bearer {token}",
-                        "x-content-type": audio_file.content_type or "application/octet-stream",
-                    },
-                    params={"filename": f"voices/{user_id}_{voice_id}_{audio_file.filename}"},
-                    content=content,
-                    timeout=30.0,
-                )
-                if resp.status_code == 200:
-                    blob_url = resp.json().get("url")
-        except Exception:
-            blob_url = None
+        blob_url = None
+        token = os.getenv("BLOB_READ_WRITE_TOKEN")
+        if token:
+            try:
+                content = await audio_file.read()
+                async with httpx.AsyncClient() as client:
+                    resp = await client.put(
+                        "https://blob.vercel-storage.com",
+                        headers={
+                            "authorization": f"Bearer {token}",
+                            "x-content-type": audio_file.content_type or "application/octet-stream",
+                        },
+                        params={"filename": f"voices/{user_id}_{voice_id}_{audio_file.filename}"},
+                        content=content,
+                        timeout=30.0,
+                    )
+                    if resp.status_code == 200:
+                        blob_url = resp.json().get("url")
+            except Exception:
+                blob_url = None
 
-    # 同时存储到两个地方
-    voice_data = {
-        "id": voice_id,
-        "name": name.strip(),
-        "status": "ready",  # 演示直接可用
-        "type": "cloned",
-        "created_at": datetime.utcnow().isoformat(),
-        "audio_url": blob_url,
-        "user_id": user_id,
-        "description": description or "",
-    }
-    
-    voices_db[voice_id] = voice_data
-    user_voices_db[voice_id] = voice_data
-
-    # 不再需要更新manifest，因为已经存储在内存中
-
-    return {
-        "success": True,
-        "data": {
-            "voice_id": voice_id,
+        # 同时存储到两个地方
+        voice_data = {
+            "id": voice_id,
             "name": name.strip(),
-            "status": "ready",
-            "estimated_time": 30,
+            "status": "ready",  # 演示直接可用
+            "type": "cloned",
+            "created_at": datetime.utcnow().isoformat(),
             "audio_url": blob_url,
-            "task_id": task_id,
-        },
-    }
+            "user_id": user_id,
+            "description": description or "",
+        }
+        
+        voices_db[voice_id] = voice_data
+        user_voices_db[voice_id] = voice_data
+
+        # 不再需要更新manifest，因为已经存储在内存中
+
+        return {
+            "success": True,
+            "data": {
+                "voice_id": voice_id,
+                "name": name.strip(),
+                "status": "ready",
+                "estimated_time": 30,
+                "audio_url": blob_url,
+                "task_id": task_id,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"success": False, "error": f"create_voice_error: {str(e)}"}
