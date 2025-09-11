@@ -378,6 +378,25 @@ const createVoice = async () => {
     if (result) {
       creationResult.value = result
       currentStep.value = 4 // 显示成功状态
+
+      // 将新音色写入本地持久化，避免无服务器后端内存不共享导致首页不展示
+      try {
+        const key = 'user_voices'
+        const raw = localStorage.getItem(key)
+        const list = raw ? JSON.parse(raw) : []
+        const newVoice = {
+          id: result.voice_id,
+          name: voiceName.value.trim(),
+          status: result.status || 'ready'
+        }
+        const map = new Map()
+        ;[...list, newVoice].forEach(v => {
+          if (v && v.id && !map.has(v.id)) map.set(v.id, { id: v.id, name: v.name, status: v.status || 'ready' })
+        })
+        localStorage.setItem(key, JSON.stringify(Array.from(map.values())))
+      } catch (e) {
+        console.warn('本地保存音色失败:', e)
+      }
     }
   } catch (err) {
     console.error('创建音色失败:', err)
