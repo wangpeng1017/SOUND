@@ -28,7 +28,7 @@
         <label class="label">选择音色</label>
         <div class="voice-selector">
           <button
-            v-for="voice in availableVoices"
+            v-for="voice in combinedVoices"
             :key="voice.id"
             @click="selectVoice(voice)"
             class="voice-btn"
@@ -38,7 +38,7 @@
             {{ voice.name }}
           </button>
         </div>
-        <div v-if="!hasVoices" class="no-voices">
+        <div v-if="combinedVoices.length === 0" class="no-voices">
           <span class="text-gray-500">暂无可用音色</span>
           <router-link to="/create" class="link">去创建 →</router-link>
         </div>
@@ -148,7 +148,6 @@ const canGenerate = computed(() => {
 // 从store解构需要的状态和方法
 const {
   availableVoices,
-  hasVoices,
   selectedVoice,
   currentTask,
   isGenerating,
@@ -161,6 +160,18 @@ const {
   selectVoice,
   generateSpeech
 } = store
+
+// 组合音色（store + 后备直连 API），避免后端瞬时内存导致的列表为空
+const fallbackVoices = ref([])
+const combinedVoices = computed(() => {
+  const map = new Map()
+  ;[...availableVoices.value, ...fallbackVoices.value].forEach(v => {
+    if (v && v.id && !map.has(v.id) && (v.status === 'ready')) {
+      map.set(v.id, { id: v.id, name: v.name, status: v.status })
+    }
+  })
+  return Array.from(map.values())
+})
 
 // 方法
 const handleGenerate = async () => {
@@ -192,8 +203,20 @@ const downloadAudio = () => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   store.initApp()
+  // 后备直连获取音色清单
+  try {
+    const res = await fetch('/api/voices')
+    const data = await res.json()
+    if (data?.success && Array.isArray(data.data)) {
+      fallbackVoices.value = data.data
+      // 若当前未选择音色，默认选择第一个
+      if (!selectedVoice.value && fallbackVoices.value.length > 0) {
+        selectVoice(fallbackVoices.value[0])
+      }
+    }
+  } catch (_) {}
 })
 </script>
 
