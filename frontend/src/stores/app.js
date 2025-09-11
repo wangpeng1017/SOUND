@@ -22,6 +22,41 @@ export const useAppStore = defineStore('app', () => {
   // 错误信息
   const error = ref(null)
 
+  // ==================== 本地持久化（解决 Serverless 瞬时内存导致的音色丢失） ====================
+  const LOCAL_VOICES_KEY = 'user_voices'
+
+  const readLocalVoices = () => {
+    try {
+      const raw = localStorage.getItem(LOCAL_VOICES_KEY)
+      if (!raw) return []
+      const list = JSON.parse(raw)
+      // 仅保留必要字段并规范 status
+      return Array.isArray(list)
+        ? list.map(v => ({ id: v.id, name: v.name, status: v.status || 'ready' }))
+        : []
+    } catch (_) {
+      return []
+    }
+  }
+
+  const saveLocalVoices = (list) => {
+    try {
+      localStorage.setItem(LOCAL_VOICES_KEY, JSON.stringify(list || []))
+    } catch (_) {}
+  }
+
+  const mergeVoices = (serverList = [], localList = []) => {
+    const map = new Map()
+    ;[...serverList, ...localList].forEach(v => {
+      if (!v || !v.id) return
+      // 优先采用服务器返回的数据结构
+      if (!map.has(v.id)) {
+        map.set(v.id, { id: v.id, name: v.name, status: v.status || 'ready' })
+      }
+    })
+    return Array.from(map.values())
+  }
+
   // ==================== 计算属性 ====================
   
   // 可用的音色列表
@@ -59,16 +94,22 @@ export const useAppStore = defineStore('app', () => {
       clearError()
       
       const response = await apiService.getVoices()
+      const serverList = response?.success ? (response.data || []) : []
+      const localList = readLocalVoices()
       
-      if (response.success) {
-        voices.value = response.data
-        
-        // 如果没有选中音色，默认选择第一个
-        if (!selectedVoice.value && voices.value.length > 0) {
-          selectedVoice.value = voices.value[0]
-        }
+      voices.value = mergeVoices(serverList, localList)
+      
+      // 如果没有选中音色，默认选择第一个
+      if (!selectedVoice.value && voices.value.length > 0) {
+        selectedVoice.value = voices.value[0]
       }
     } catch (err) {
+      // 服务器失败也回退到本地
+      const localList = readLocalVoices()
+      voices.value = mergeVoices([], localList)
+      if (!selectedVoice.value && voices.value.length > 0) {
+        selectedVoice.value = voices.value[0]
+      }
       setError('加载音色列表失败: ' + err.message)
     } finally {
       voicesLoading.value = false
@@ -182,9 +223,24 @@ export const useAppStore = defineStore('app', () => {
       
       const response = await apiService.uploadVoiceSample(audioFile, voiceName)
       
-      if (response.success) {
-        // 重新加载音色列表
-        await loadVoices()
+      if (response?.success && response.data) {
+        // 将新音色写入本地持久化，解决 Serverless 内存不共享问题
+        const newVoice = {
+          id: response.data.voice_id,
+          name: response.data.name || voiceName,
+          status: response.data.status || 'ready'
+        }
+        const localList = readLocalVoices()
+        const mergedLocal = mergeVoices([], [...localList, newVoice])
+        saveLocalVoices(mergedLocal)
+
+        // 同步到内存状态并优先选择新音色
+        voices.value = mergeVoices(voices.value, [newVoice])
+        selectedVoice.value = newVoice
+
+        // 尝试从服务器再拉一遍，确保 UI 与服务一致
+        try { await loadVoices() } catch (_) {}
+
         return response.data
       }
     } catch (err) {
